@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Batalla del Esperma y el Óvulo - Kingdom Rush Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700;900&family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .font-heading {
+            font-family: 'Fredoka', sans-serif;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.96);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        @keyframes pulse-glow {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(244, 63, 94, 0.6)); }
+            50% { transform: scale(1.06); filter: drop-shadow(0 0 22px rgba(244, 63, 94, 0.95)); }
+        }
+        .egg-pulse {
+            animation: pulse-glow 2.5s infinite ease-in-out;
+        }
+        @keyframes baby-shake {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.1) rotate(-5deg); }
+            75% { transform: scale(1.1) rotate(5deg); }
+        }
+        .baby-animation {
+            animation: baby-shake 1.5s infinite ease-in-out;
+        }
+        canvas {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between overflow-hidden">
+
+    <header class="bg-slate-900/95 border-b border-slate-800 p-2 md:p-3 flex items-center justify-between z-10 shadow-lg">
+        <div class="flex items-center gap-2">
+            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-600 flex items-center justify-center text-xl font-bold shadow-md shadow-pink-500/20 egg-pulse">
+                🥚
+            </div>
+            <div>
+                <h1 class="font-heading font-black text-xs md:text-base tracking-wide bg-gradient-to-r from-pink-400 via-rose-300 to-amber-300 bg-clip-text text-transparent">
+                    LA BATALLA DEL ESPERMA Y EL ÓVULO
+                </h1>
+                <p class="text-[10px] md:text-xs text-slate-400 font-medium">¡Tú decides el resultado! • 20 Niveles</p>
+            </div>
+        </div>
+
+        <!-- HUD Stats -->
+        <div class="flex items-center gap-2 md:gap-4 text-xs md:text-sm">
+            <!-- Audio Toggle -->
+            <button onclick="toggleBattleMusic()" id="btnAudioToggle" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-xl border border-slate-700 text-amber-400 font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all">
+                <i id="audioIcon" class="fa-solid fa-volume-xmark"></i> <span class="hidden sm:inline" id="audioLabel">Música</span>
+            </button>
+
+            <!-- Gold -->
+            <div class="bg-slate-800/90 px-3 py-1.5 rounded-xl border border-amber-500/30 flex items-center gap-1.5 shadow-md">
+                <span class="text-amber-400 text-base">🪙</span>
+                <span class="font-bold text-slate-400 hidden sm:inline">Oro:</span>
+                <span id="statGold" class="font-heading font-bold text-amber-300 text-sm md:text-base">250</span>
+            </div>
+
+            <!-- Lives (Óvulo HP - 1 Vida estricta) -->
+            <div class="bg-slate-800/90 px-3 py-1.5 rounded-xl border border-rose-500/30 flex items-center gap-1.5 shadow-md">
+                <span class="text-rose-400 text-base">🥚</span>
+                <span class="font-bold text-slate-400 hidden sm:inline">Óvulo HP:</span>
+                <span id="statLives" class="font-heading font-bold text-rose-300 text-sm md:text-base">1</span>
+            </div>
+
+            <!-- Level Counter -->
+            <div class="bg-slate-800/90 px-3 py-1.5 rounded-xl border border-sky-500/30 flex items-center gap-1.5 shadow-md">
+                <span class="text-sky-400 text-base">⚔️</span>
+                <span class="font-bold text-slate-400 hidden sm:inline">Nivel:</span>
+                <span id="statWave" class="font-heading font-bold text-sky-300 text-sm md:text-base">1 / 20</span>
+            </div>
+
+            <!-- Defense Trigger Button -->
+            <button id="btnNextWave" onclick="openBarrierChoiceModal()" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-heading font-black px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-xs md:text-sm flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 cursor-pointer transition-all active:scale-95">
+                <i class="fa-solid fa-shield-halved"></i> <span>1. ELEGIR DEFENSAS</span>
+            </button>
+
+            <!-- Online Mode Button -->
+            <button onclick="openOnlineModal()" class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-heading font-black px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-xs md:text-sm flex items-center gap-1.5 shadow-lg shadow-indigo-500/20 cursor-pointer transition-all active:scale-95">
+                <i class="fa-solid fa-globe"></i> <span class="hidden sm:inline">ONLINE</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="relative flex-1 w-full h-full bg-slate-950 flex items-center justify-center p-1 overflow-hidden">
+        <canvas id="gameCanvas" class="w-full h-full max-w-5xl rounded-3xl border-2 border-slate-800 shadow-2xl bg-slate-900 cursor-pointer"></canvas>
+
+        <!-- Tower Build Menu Overlay -->
+        <div id="towerMenu" class="absolute hidden z-30 flex flex-col items-center bg-slate-900/95 border border-slate-700 p-2.5 rounded-2xl shadow-2xl backdrop-blur-md transition-all scale-95 opacity-0">
+            <span class="text-[11px] font-bold text-amber-400 mb-1.5 font-heading">COLOCAR MÉTODO ANTICONCEPTIVO</span>
+            <div class="grid grid-cols-2 gap-2" id="towerMenuOptionsContainer">
+                <!-- Dynamically rendered -->
+            </div>
+            <button onclick="closeTowerMenu()" class="mt-2 text-[10px] text-slate-400 hover:text-slate-200 underline cursor-pointer">
+                Cancelar
+            </button>
+        </div>
+    </main>
+
+    <!-- Intro Modal -->
+    <div id="introModal" class="fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-0 overflow-hidden">
+        <div class="relative w-full h-full max-w-md max-h-[900px] flex flex-col items-center justify-between p-6 bg-cover bg-center shadow-2xl overflow-y-auto" style="background-image: url('https://placehold.co/800x1200/1e1b4b/f43f5e?text=La+Batalla+Del+Esperma+Y+El+Ovulo');">
+            
+            <div class="absolute inset-0 bg-gradient-to-b from-slate-950/70 via-slate-950/40 to-slate-950/85 pointer-events-none"></div>
+
+            <div class="relative z-10 flex flex-col items-center text-center mt-6 space-y-2">
+                <div class="flex items-center justify-center gap-3">
+                    <span class="text-3xl animate-bounce">🏃‍♂️💨</span>
+                    <h1 class="font-heading text-2xl md:text-3xl font-black uppercase tracking-tight text-white drop-shadow-[0_4px_12px_rgba(244,63,94,0.8)]">
+                        LA BATALLA <span class="text-sky-400">DEL</span> ESPERMA <span class="text-pink-400">Y EL</span> ÓVULO
+                    </h1>
+                    <span class="text-3xl egg-pulse">👑🥚</span>
+                </div>
+                <div class="bg-gradient-to-r from-pink-600 via-rose-500 to-purple-600 px-6 py-1.5 rounded-full shadow-lg border border-pink-400/50">
+                    <p class="font-heading text-xs md:text-sm text-white font-black tracking-wider drop-shadow">
+                        ¡Tú decides el resultado!
+                    </p>
+                </div>
+            </div>
+
+            <div class="relative z-10 w-full text-left text-xs bg-slate-900/85 backdrop-blur-md p-4 rounded-3xl border border-pink-500/40 space-y-2 shadow-2xl my-auto">
+                <div class="flex items-center gap-2 text-slate-100 font-medium">
+                    <span class="text-base">🛡️</span> <span><strong>20 Niveles</strong> con recorridos y laberintos cada vez más desafiantes.</span>
+                </div>
+                <div class="flex items-center gap-2 text-slate-100 font-medium">
+                    <span class="text-base">🧠</span> <span>Responde trivias de salud sexual para desbloquear torres o se bloquearán si fallas.</span>
+                </div>
+                <div class="flex items-center gap-2 text-rose-300 font-medium">
+                    <span class="text-base">⚠️</span> <span>El óvulo tiene <strong>1 sola vida (HP = 1)</strong>. Si un espermatozoide entra, ¡pierdes!</span>
+                </div>
+            </div>
+
+            <div class="relative z-10 w-full flex flex-col items-center gap-3 mb-4">
+                <button onclick="startCampaignIntro()" class="w-full py-4 bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 hover:from-pink-400 hover:to-rose-500 text-white font-heading font-black rounded-2xl text-lg md:text-xl shadow-[0_0_25px_rgba(244,63,94,0.6)] transition-all active:scale-95 flex items-center justify-center gap-2.5 cursor-pointer uppercase tracking-wider border-2 border-pink-300/60">
+                    <i class="fa-solid fa-play text-base"></i> JUGAR
+                </button>
+
+                <div class="grid grid-cols-3 gap-2.5 w-full">
+                    <button onclick="openTutorialModal()" class="py-3 px-2 bg-slate-900/90 hover:bg-slate-800 border border-indigo-500/50 rounded-xl text-xs font-bold text-slate-200 flex flex-col items-center gap-1 cursor-pointer transition-all shadow-lg">
+                        <i class="fa-solid fa-gear text-sky-400 text-base"></i> OPCIONES
+                    </button>
+                    <button onclick="openTutorialModal()" class="py-3 px-2 bg-slate-900/90 hover:bg-slate-800 border border-indigo-500/50 rounded-xl text-xs font-bold text-slate-200 flex flex-col items-center gap-1 cursor-pointer transition-all shadow-lg">
+                        <i class="fa-solid fa-book-open text-amber-400 text-base"></i> TUTORIAL
+                    </button>
+                    <button onclick="openAchievementsModal()" class="py-3 px-2 bg-slate-900/90 hover:bg-slate-800 border border-indigo-500/50 rounded-xl text-xs font-bold text-slate-200 flex flex-col items-center gap-1 cursor-pointer transition-all shadow-lg">
+                        <i class="fa-solid fa-trophy text-emerald-400 text-base"></i> LOGROS
+                    </button>
+                </div>
+
+                <p class="text-xs text-pink-300 font-black tracking-wide flex items-center gap-1.5 mt-1 drop-shadow">
+                    <span>✨</span> ¡Protege tu futuro! <span>💖</span>
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="tutorialModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-panel border-2 border-sky-500/40 p-6 rounded-3xl max-w-md w-full text-center shadow-2xl flex flex-col items-center gap-4">
+            <div class="w-16 h-16 rounded-full bg-sky-500/20 border border-sky-400 flex items-center justify-center text-3xl mb-1">
+                📚
+            </div>
+            <div>
+                <h3 class="font-heading text-xl font-bold text-sky-300">Tutorial y Guía de Salud</h3>
+                <p class="text-xs text-slate-300 mt-1">Cómo jugar y prevenir en <strong>La Batalla del Esperma y el Óvulo</strong></p>
+            </div>
+            <div class="text-left text-xs bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 space-y-2 text-slate-200">
+                <p>🎈 <strong>Condón Atrapador:</strong> Retiene temporalmente a los espermatozoides en la red.</p>
+                <p>💊 <strong>Píldoras Anticonceptivas:</strong> Disparan proyectiles de control hormonal a distancia.</p>
+                <p>💉 <strong>Implante Subdérmico:</strong> Alta potencia de daño continuo y efectivo.</p>
+                <p>🛡️ <strong>Abstinencia Completa:</strong> Crea una sólida barrera táctica.</p>
+            </div>
+            <button onclick="closeTutorialModal()" class="w-full py-3 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-slate-950 font-heading font-bold rounded-2xl text-xs sm:text-sm shadow-xl cursor-pointer">
+                Entendido 🚀
+            </button>
+        </div>
+    </div>
+
+    <!-- Online Lobby Modal -->
+    <div id="onlineModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-panel border-2 border-indigo-500/40 p-6 rounded-3xl max-w-md w-full text-center shadow-2xl flex flex-col items-center gap-4">
+            <div class="w-16 h-16 rounded-full bg-indigo-500/20 border border-indigo-400 flex items-center justify-center text-3xl mb-1">
+                🌐
+            </div>
+            <div>
+                <h3 class="font-heading text-xl font-bold text-indigo-300">Sala Multijugador Online</h3>
+                <p class="text-xs text-slate-300 mt-1">Sincroniza tu partida en tiempo real con otros defensores conectados.</p>
+            </div>
+            <div class="w-full text-left text-xs bg-slate-900/90 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400">ID de Usuario:</span>
+                    <span id="onlineUserIdDisplay" class="font-mono text-indigo-300 text-[11px] truncate max-w-[200px]">Cargando...</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400">Estado de Sincronización:</span>
+                    <span id="onlineSyncStatus" class="font-bold text-amber-400">Desconectado</span>
+                </div>
+            </div>
+            <div class="flex gap-2 w-full">
+                <button onclick="hostOnlineRoom()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-heading font-bold rounded-xl text-xs shadow-lg cursor-pointer transition-all">
+                    Crear Sala Partida
+                </button>
+                <button onclick="joinOnlineRoom()" class="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white font-heading font-bold rounded-xl text-xs shadow-lg cursor-pointer transition-all">
+                    Unirse a Partida
+                </button>
+            </div>
+            <button onclick="closeOnlineModal()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-heading font-bold rounded-xl text-xs cursor-pointer">
+                Cerrar
+            </button>
+        </div>
+    </div>
+
+    <div id="barrierChoiceModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-40 hidden flex items-center justify-center p-4">
+        <div class="glass-panel border-2 border-emerald-500/40 p-6 rounded-3xl max-w-lg w-full text-center shadow-2xl flex flex-col items-center gap-4">
+            <div class="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-3xl mb-1">
+                🛡️
+            </div>
+            <div>
+                <h2 id="barrierModalHeader" class="font-heading text-xl font-bold text-emerald-400">Selección de Método Anticonceptivo</h2>
+                <p class="text-xs text-slate-300 mt-1">Responde la trivia de cada método. Si fallas, quedará <strong>bloqueado permanentemente</strong> para este nivel sin opción de corregir.</p>
+            </div>
+
+            <!-- Method Tabs -->
+            <div class="grid grid-cols-4 gap-1.5 w-full">
+                <button onclick="selectMethodTab('condom')" id="tab-condom" class="p-2 bg-slate-800/80 border border-slate-700 rounded-xl text-[11px] font-bold text-slate-400 flex flex-col items-center gap-1 cursor-pointer">
+                    <span class="text-lg">🎈</span> Condón
+                </button>
+                <button onclick="selectMethodTab('pill')" id="tab-pill" class="p-2 bg-slate-800/80 border border-slate-700 rounded-xl text-[11px] font-bold text-slate-400 flex flex-col items-center gap-1 cursor-pointer">
+                    <span class="text-lg">💊</span> Píldoras
+                </button>
+                <button onclick="selectMethodTab('implant')" id="tab-implant" class="p-2 bg-slate-800/80 border border-slate-700 rounded-xl text-[11px] font-bold text-slate-400 flex flex-col items-center gap-1 cursor-pointer">
+                    <span class="text-lg">💉</span> Implante
+                </button>
+                <button onclick="selectMethodTab('abstinence')" id="tab-abstinence" class="p-2 bg-slate-800/80 border border-slate-700 rounded-xl text-[11px] font-bold text-slate-400 flex flex-col items-center gap-1 cursor-pointer">
+                    <span class="text-lg">🛡️</span> Abstinencia
+                </button>
+            </div>
+
+            <!-- Question Container -->
+            <div class="p-4 bg-slate-900/90 rounded-2xl border border-slate-700 w-full text-left space-y-3">
+                <p id="barrierQuestionTitle" class="text-xs sm:text-sm font-semibold text-slate-200">
+                    Cargando pregunta...
+                </p>
+                <div id="barrierOptionsContainer" class="space-y-2">
+                    <!-- Dynamic options -->
+                </div>
+            </div>
+
+            <!-- Answer Feedback Badge -->
+            <div id="answerFeedbackBadge" class="hidden w-full p-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                <span></span>
+            </div>
+
+            <!-- Start Action Wave Button -->
+            <button id="btnStartActionWave" onclick="startBattleWave()" class="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-heading font-black rounded-2xl text-sm md:text-base shadow-xl shadow-emerald-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
+                <span>⚔️ 2. ¡EMPEZAR LA GUERRA DE ESPERMA! ⚔️</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="endModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-panel border-2 p-6 rounded-3xl max-w-md w-full text-center shadow-2xl flex flex-col items-center gap-4" id="endModalBox">
+            <div id="endIcon" class="w-24 h-24 rounded-full flex items-center justify-center text-5xl mb-1 bg-slate-900 border-2 border-amber-400">
+                🏆
+            </div>
+            <div>
+                <h3 id="endTitle" class="font-heading text-2xl font-bold">¡NIVEL COMPLETADO!</h3>
+                <p id="endSubtitle" class="text-xs text-slate-300 mt-1">¡0 espermatozoides llegaron al óvulo!</p>
+            </div>
+
+            <div id="educationalQuoteContainer" class="p-3 bg-slate-900/90 rounded-2xl border border-amber-500/40 w-full text-center space-y-1">
+                <span class="text-xs font-bold text-amber-300">💡 Lección de Salud:</span>
+                <p id="educationalQuoteText" class="text-xs text-slate-200 italic font-medium">"El uso constante del condón protege contra embarazos e ITS."</p>
+            </div>
+            
+            <div id="babyFormedContainer" class="hidden flex-col items-center gap-2 p-3 bg-slate-900/90 rounded-2xl border border-pink-500/40 w-full">
+                <span class="text-xs font-bold text-pink-300">👶 ¡El esperma penetró el óvulo (HP = 0)!</span>
+                <div class="w-24 h-24 rounded-full bg-slate-950 border-2 border-pink-400 flex items-center justify-center text-5xl baby-animation shadow-lg shadow-pink-500/50">
+                    👶
+                </div>
+                <p class="text-[11px] text-amber-200 italic">"¡Quedaste embarazada! Se ha formado un bebito. El óvulo perdió su única vida (HP = 0). ¡Inténtalo de nuevo!"</p>
+            </div>
+
+            <div class="flex gap-3 w-full">
+                <button id="btnNextLevelModal" onclick="advanceToNextLevel()" class="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-heading font-bold rounded-2xl text-xs sm:text-sm shadow-xl cursor-pointer transition-all hover:scale-105 active:scale-95">
+                    Pasar al Nivel Siguiente ➡️
+                </button>
+                <button onclick="restartGame()" class="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-heading font-bold rounded-2xl text-xs sm:text-sm shadow-xl cursor-pointer transition-all">
+                    Reiniciar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas ? canvas.getContext('2d') : null;
+
+        window.gold = 250;
+        window.lives = 1;
+        window.wave = 1;
+        window.maxWaves = 20;
+        window.isWaveActive = false;
+        window.gameOver = false;
+        let selectedSpot = null;
+        let currentMethodTab = 'condom';
+        let isMusicPlaying = false;
+        let musicInterval = null;
+
+        const methodStatus = {
+            condom: 'unanswered',
+            pill: 'unanswered',
+            implant: 'unanswered',
+            abstinence: 'unanswered'
+        };
+
+        let activeTriviaQuestions = {};
+
+        const towers = [];
+        const enemies = [];
+        const projectiles = [];
+        const particles = [];
+        let towerSpots = [];
+        let totalEnemiesInWave = 0;
+        let spawnedEnemiesCount = 0;
+        let spawnTimer = null;
+
+        // Firebase Cloud Storage / Realtime Sync Integration
+        let db = null;
+        let auth = null;
+        let userId = null;
+        let unsubscribeRoom = null;
+
+        async function initFirebaseSync() {
+            try {
+                if (typeof __firebase_config !== 'undefined' && typeof window.initializeFirebase === 'function' || true) {
+                    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+                    const { getAuth, signInAnonymously, signInWithCustomToken } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+                    const { getFirestore, doc, setDoc, onSnapshot, collection } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+
+                    const firebaseConfig = JSON.parse(__firebase_config);
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+
+                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'defensa-reproductiva-app';
+
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    userId = auth.currentUser ? auth.currentUser.uid : crypto.randomUUID();
+                    const elUser = document.getElementById('onlineUserIdDisplay');
+                    if (elUser) elUser.textContent = userId;
+                }
+            } catch (e) {
+                console.log("Offline mode fallback active:", e);
+            }
+        }
+        initFirebaseSync();
+
+        window.openOnlineModal = function() {
+            const m = document.getElementById('onlineModal');
+            if (m) m.classList.remove('hidden');
+        };
+
+        window.closeOnlineModal = function() {
+            const m = document.getElementById('onlineModal');
+            if (m) m.classList.add('hidden');
+        };
+
+        window.hostOnlineRoom = async function() {
+            if (!db || !userId) {
+                alert("Cloud storage no disponible en entorno offline local.");
+                return;
+            }
+            const { doc, setDoc, collection } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'defensa-reproductiva-app';
+            
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', userId);
+            await setDoc(roomRef, {
+                hostId: userId,
+                wave: window.wave,
+                gold: window.gold,
+                lives: window.lives,
+                timestamp: Date.now()
+            });
+
+            const statusEl = document.getElementById('onlineSyncStatus');
+            if (statusEl) {
+                statusEl.textContent = "Sala Creada (Hosting)";
+                statusEl.className = "font-bold text-emerald-400";
+            }
+            listenToOnlineRoom(userId);
+        };
+
+        window.joinOnlineRoom = async function() {
+            const hostIdInput = prompt("Introduce el ID de Usuario del Host para unirte:");
+            if (!hostIdInput || !db) return;
+
+            const { doc, onSnapshot } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'defensa-reproductiva-app';
+
+            const statusEl = document.getElementById('onlineSyncStatus');
+            if (statusEl) {
+                statusEl.textContent = "Conectado a Sala";
+                statusEl.className = "font-bold text-emerald-400";
+            }
+            listenToOnlineRoom(hostIdInput.trim());
+        };
+
+        async function listenToOnlineRoom(targetRoomId) {
+            if (!db) return;
+            const { doc, onSnapshot } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'defensa-reproductiva-app';
+
+            if (unsubscribeRoom) unsubscribeRoom();
+
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'game_rooms', targetRoomId);
+            unsubscribeRoom = onSnapshot(roomRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.wave && data.wave !== window.wave) {
+                        window.wave = data.wave;
+                        window.gold = data.gold || window.gold;
+                        window.updateUI();
+                    }
+                }
+            }, (error) => {
+                console.error("Sync error:", error);
+            });
+        }
+
+        window.updateUI = function() {
+// ... existing code ... -->
